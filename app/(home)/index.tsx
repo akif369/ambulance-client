@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Image, StyleSheet, Alert, Text, TouchableOpacity } from "react-native";
+import { View, Image, StyleSheet, Alert, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
@@ -7,12 +7,14 @@ import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
 
 const Home = () => {
   const [location, setLocation]: any = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission Denied", "Allow location access to use this feature.");
+        setIsLoading(false);
         return;
       }
       let currentLocation = await Location.getCurrentPositionAsync({});
@@ -22,6 +24,7 @@ const Home = () => {
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       });
+      setIsLoading(false);
     })();
   }, []);
 
@@ -52,7 +55,12 @@ const Home = () => {
 
       {/* Google Map View with User's Location */}
       <View style={styles.container}>
-        {location && (
+        {isLoading ? (
+          <View style={styles.placeholder}>
+            <ActivityIndicator size="large" color="#ffffff" />
+            <Text style={styles.placeholderText}>Loading map...</Text>
+          </View>
+        ) : location ? (
           <MapView 
             style={styles.map} 
             customMapStyle={mapStyle}
@@ -61,6 +69,10 @@ const Home = () => {
           >
             <Marker coordinate={location} title="You are here" />
           </MapView>
+        ) : (
+          <View style={styles.placeholder}>
+            <Text style={styles.placeholderText}>Unable to load map.</Text>
+          </View>
         )}
       </View>
 
@@ -103,5 +115,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  placeholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e", // Dark background to match the theme
+  },
+  placeholderText: {
+    color: "white",
+    fontSize: 18,
+    marginTop: 10,
   },
 });
