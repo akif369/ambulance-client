@@ -3,11 +3,16 @@ import { View, Image, StyleSheet, Alert, Text, TouchableOpacity, ActivityIndicat
 import Svg, { Path } from "react-native-svg";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native"; // Import useNavigation hook
 import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
+import { useRouter } from "expo-router";
 
 const Home = () => {
   const [location, setLocation]: any = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigation = useNavigation(); // Initialize navigation
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -28,23 +33,54 @@ const Home = () => {
     })();
   }, []);
 
+  // Function to handle logout
+  const handleLogout = async () => {
+    // Stylish confirmation dialog
+    Alert.alert(
+      "Logout", // Title
+      "Are you sure you want to logout?", // Message
+      [
+        {
+          text: "Cancel",
+          style: "cancel", // Cancel button
+        },
+        {
+          text: "Logout",
+          style: "destructive", // Destructive button (red on iOS)
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem("token"); // Remove token from AsyncStorage
+              router.replace("/(auth)"); // Navigate to the Login screen
+            } catch (error) {
+              console.error("Error removing token:", error);
+              Alert.alert("Error", "Failed to logout. Please try again.");
+            }
+          },
+        },
+      ],
+      { cancelable: true } // Allow dismissing the dialog by tapping outside
+    );
+  };
+
   return (
     <View className="flex-1 bg-primary"> {/* Dark background */}
       {/* Header with Hamburger & Profile Icon */}
       <View className="flex justify-between flex-row m-5">
         {/* Hamburger Icon */}
-        <Svg
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <Path d="M3 12h18M3 6h18M3 18h18" />
-        </Svg>
+        <TouchableOpacity onPress={handleLogout}> {/* Add onPress handler */}
+          <Svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <Path d="M3 12h18M3 6h18M3 18h18" />
+          </Svg>
+        </TouchableOpacity>
 
         <Image
           source={require("@/assets/images/profile.png")}

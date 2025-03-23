@@ -7,14 +7,15 @@ import {
   Image, 
   TouchableHighlight, 
   ActivityIndicator, 
-  TextInput 
+  TextInput, 
+  Alert 
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 const Register = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [form, setForm]:[any,React.Dispatch<React.SetStateAction<any>>] = useState({
+  const [form, setForm]:any = useState({
     name: "",
     number: "",
     email: "",
@@ -25,12 +26,36 @@ const Register = () => {
     router.back();
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    if (!form.name || !form.number || !form.email || !form.password) {
+      Alert.alert("Error", "All fields are required.");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      router.replace("/(home)");
+
+    try {
+      const response = await fetch("http://192.168.215.61:3000/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Success", "Registration successful!");
+        router.replace("/(auth)"); // Navigate to home screen after registration
+      } else {
+        Alert.alert("Error", data.message || "Registration failed");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -66,39 +91,38 @@ const Register = () => {
             onChangeText={(text) => setForm({ ...form, [field.toLowerCase()]: text })}
           />
         ))}
-         {/* OR Separator */}
-         <View className="flex-row items-center my-5">
-  <View className="flex-1 h-[1px] bg-white opacity-50" />
-  <Text className="text-center text-white text-lg opacity-80 mx-3 font-semibold">OR</Text>
-  <View className="flex-1 h-[1px] bg-white opacity-50" />
-</View>
+        
+        {/* OR Separator */}
+        <View className="flex-row items-center my-5">
+          <View className="flex-1 h-[1px] bg-white opacity-50" />
+          <Text className="text-center text-white text-lg opacity-80 mx-3 font-semibold">OR</Text>
+          <View className="flex-1 h-[1px] bg-white opacity-50" />
+        </View>
 
-{/* Google Sign-in Button */}
-<TouchableHighlight className="bg-white flex-row items-center justify-center p-3 mx-6 rounded-lg" underlayColor="#ddd">
-  <>
-    <Image source={require("@/assets/images/icon-google.png")} className="h-9 w-9 mr-2 top-1" />
-    <Text className="text-[#1A4041] text-lg font-medium">Continue with Google</Text>
-  </>
-</TouchableHighlight>
+        {/* Google Sign-in Button */}
+        <TouchableHighlight className="bg-white flex-row items-center justify-center p-3 mx-6 rounded-lg" underlayColor="#ddd">
+          <>
+            <Image source={require("@/assets/images/icon-google.png")} className="h-9 w-9 mr-2 top-1" />
+            <Text className="text-[#1A4041] text-lg font-medium">Continue with Google</Text>
+          </>
+        </TouchableHighlight>
       </View>
 
-     
-
-    <View className="mb-7">
-        {/* Register Button */}
+      {/* Register Button */}
+      <View className="mb-7">
         <TouchableHighlight
-        className="bg-white px-10 py-3 rounded-lg mx-6 mt-4"
-        underlayColor="#ddd"
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator size="large" className="h-8" color="#1A4041" />
-        ) : (
-          <Text className="text-2xl font-bold text-[#1A4041] text-center">Register</Text>
-        )}
-      </TouchableHighlight>
-    </View>
+          className="bg-white px-10 py-3 rounded-lg mx-6 mt-4"
+          underlayColor="#ddd"
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="large" className="h-8" color="#1A4041" />
+          ) : (
+            <Text className="text-2xl font-bold text-[#1A4041] text-center">Register</Text>
+          )}
+        </TouchableHighlight>
+      </View>
     </View>
   );
 };
