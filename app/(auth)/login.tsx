@@ -7,8 +7,10 @@ import {
   Image, 
   TouchableHighlight, 
   ActivityIndicator, 
-  TextInput 
+  TextInput, 
+  Alert 
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
 
 const Login = () => {
@@ -23,12 +25,39 @@ const Login = () => {
     router.back();
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (!form.email || !form.password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+    console.log(form)
+    try {
+      const response = await fetch("http://192.168.215.61:3000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      // Store the token securely
+      await AsyncStorage.setItem("token", data.token);
+
+      // Redirect to home
       router.replace("/(home)");
+    } catch (error:any) {
+      Alert.alert("Login Failed", error.message);
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -80,7 +109,7 @@ const Login = () => {
         {/* Google Sign-in Button */}
         <TouchableHighlight className="bg-white flex-row items-center justify-center p-3 mx-6 rounded-lg" underlayColor="#ddd">
           <>
-          <Image source={require("@/assets/images/icon-google.png")} className="h-9 w-9 mr-2 top-1" />
+            <Image source={require("@/assets/images/icon-google.png")} className="h-9 w-9 mr-2 top-1" />
             <Text className="text-[#1A4041] text-lg font-medium">Continue with Google</Text>
           </>
         </TouchableHighlight>
