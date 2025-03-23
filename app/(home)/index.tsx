@@ -39,7 +39,7 @@ const Home = () => {
         const profile = response.data;
         setUserProfile(profile);
 
-        if (profile.userType === "driver") {
+        if (profile.user.userType === "ambulance") {
           router.replace("/(driver)");
         }
       } catch (error) {
