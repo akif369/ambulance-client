@@ -40,7 +40,7 @@ const Home = () => {
         setUserProfile(profile);
 
         if (profile.userType === "driver") {
-          router.replace("/(driver)/index"); // Redirect to driver page
+          router.replace("/(driver)");
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);

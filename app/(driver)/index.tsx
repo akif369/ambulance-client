@@ -7,19 +7,22 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
-import axios from "axios"; // Import Axios for API calls
+import mapStyle from "@/assets/mapStyle.json";
+import axios from "axios";
 
 const Driver = () => {
   const [location, setLocation]: any = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile]: any = useState(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const [rideStarted, setRideStarted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,11 +30,10 @@ const Driver = () => {
       try {
         const token = await AsyncStorage.getItem("token");
         if (!token) {
-          router.replace("/(auth)"); // Redirect to auth if not authenticated
+          router.replace("/(auth)");
           return;
         }
 
-        // Fetch user profile
         const response = await axios.get("http://192.168.215.61:3000/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -39,13 +41,17 @@ const Driver = () => {
         const profile = response.data;
         setUserProfile(profile);
 
-        // Redirect to home if user is a client
         if (profile.userType !== "driver") {
-          router.replace("/(home)"); // Redirect to home page
+          router.replace("/(home)");
+        }
+
+        const storedStatus = await AsyncStorage.getItem("driverStatus");
+        if (storedStatus) {
+          setIsOnline(storedStatus === "online");
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
-        router.replace("/(auth)"); // Fallback to auth page if request fails
+        router.replace("/(auth)");
       }
     };
 
@@ -69,16 +75,38 @@ const Driver = () => {
     })();
   }, []);
 
-  // Function to handle logout
+  // Toggle online/offline status
+  const toggleStatus = async () => {
+    const newStatus = !isOnline;
+    setIsOnline(newStatus);
+    await AsyncStorage.setItem("driverStatus", newStatus ? "online" : "offline");
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      await axios.post(
+        "http://192.168.215.61:3000/update-status",
+        { status: newStatus ? "online" : "offline" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error("Error updating driver status:", error);
+      Alert.alert("Error", "Failed to update status. Please try again.");
+    }
+  };
+
+  // Start/Stop ride function
+  const toggleRide = () => {
+    setRideStarted(!rideStarted);
+    Alert.alert("Ride Status", rideStarted ? "Ride Ended" : "Ride Started");
+  };
+
+  // Logout function
   const handleLogout = async () => {
     Alert.alert(
       "Logout",
       "Are you sure you want to logout?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Logout",
           style: "destructive",
@@ -101,7 +129,7 @@ const Driver = () => {
     <View className="bg-primary" style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Logout Icon */}
+        {/* Hamburger Menu */}
         <TouchableOpacity onPress={handleLogout}>
           <Svg
             width="32"
@@ -117,18 +145,23 @@ const Driver = () => {
           </Svg>
         </TouchableOpacity>
 
-        {/* Profile Section */}
+        {/* Toggle Online/Offline */}
+        <View style={styles.toggleContainer}>
+          <Text style={styles.statusText}>{isOnline ? "Online" : "Offline"}</Text>
+          <Switch value={isOnline} onValueChange={toggleStatus} thumbColor="#fff" trackColor={{ false: "#767577", true: "#007AFF" }} />
+        </View>
+
+        {/* Profile Image */}
         <View style={styles.profileSection}>
           <Image
             source={userProfile?.profileImage ? { uri: userProfile.profileImage } : require("@/assets/images/profile.png")}
             style={styles.profileImage}
             resizeMode="cover"
           />
-          <Text style={styles.profileName}>{userProfile?.name || "Driver"}</Text>
         </View>
       </View>
 
-      {/* Google Map View */}
+      {/* Map View */}
       <View style={styles.mapContainer}>
         {isLoading ? (
           <View style={styles.placeholder}>
@@ -152,14 +185,9 @@ const Driver = () => {
       </View>
 
       {/* Start Ride Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.rideButton}
-          onPress={() => Alert.alert("Ride Started", "You're now available for trips.")}
-        >
-          <Text style={styles.buttonText}>START RIDE</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity className="bottom-5 absolute left-10 right-10 " style={styles.startRideButton} onPress={toggleRide}>
+        <Text style={styles.startRideText}>{rideStarted ? "End Ride" : "Start Ride"}</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -177,6 +205,19 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 20,
   },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  statusText: {
+    color: "white",
+    fontSize: 14,
+    marginRight: 5,
+  },
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
@@ -185,12 +226,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
-  },
-  profileName: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
   },
   mapContainer: {
     flex: 1,
@@ -199,22 +234,15 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  buttonContainer: {
-    position: "absolute",
-    bottom: 30,
-    left: 20,
-    right: 20,
-    alignItems: "center",
-  },
-  rideButton: {
+  startRideButton: {
     backgroundColor: "#007AFF",
     paddingVertical: 15,
-    width: "100%",
+    marginHorizontal: 20,
+    marginBottom: 20,
     borderRadius: 10,
     alignItems: "center",
-    elevation: 5,
   },
-  buttonText: {
+  startRideText: {
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
@@ -223,11 +251,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1e1e1e",
   },
   placeholderText: {
     color: "white",
     fontSize: 18,
-    marginTop: 10,
   },
 });
