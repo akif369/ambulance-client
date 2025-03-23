@@ -10,6 +10,8 @@ export default function Login() {
   const [checkingAuth, setCheckingAuth] = useState(true); // To handle initial token check
 
   useEffect(() => {
+
+
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("token");

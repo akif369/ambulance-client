@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
 import axios from "axios"; // Import Axios for API calls
 
-const Home = () => {
+const Driver = () => {
   const [location, setLocation]: any = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile]: any = useState(null);
@@ -39,8 +39,9 @@ const Home = () => {
         const profile = response.data;
         setUserProfile(profile);
 
-        if (profile.userType === "driver") {
-          router.replace("/(driver)/index"); // Redirect to driver page
+        // Redirect to home if user is a client
+        if (profile.userType !== "driver") {
+          router.replace("/(home)"); // Redirect to home page
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -97,10 +98,10 @@ const Home = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="bg-primary" style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Hamburger Icon */}
+        {/* Logout Icon */}
         <TouchableOpacity onPress={handleLogout}>
           <Svg
             width="32"
@@ -123,7 +124,7 @@ const Home = () => {
             style={styles.profileImage}
             resizeMode="cover"
           />
-          <Text style={styles.profileName}>{userProfile?.name || "User"}</Text>
+          <Text style={styles.profileName}>{userProfile?.name || "Driver"}</Text>
         </View>
       </View>
 
@@ -150,25 +151,24 @@ const Home = () => {
         )}
       </View>
 
-      {/* Emergency Button */}
+      {/* Start Ride Button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={styles.emergencyButton}
-          onPress={() => Alert.alert("Emergency!", "Calling for an ambulance...")}
+          style={styles.rideButton}
+          onPress={() => Alert.alert("Ride Started", "You're now available for trips.")}
         >
-          <Text style={styles.buttonText}>EMERGENCY</Text>
+          <Text style={styles.buttonText}>START RIDE</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-export default Home;
+export default Driver;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212", // Dark background
   },
   header: {
     flexDirection: "row",
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: "center",
   },
-  emergencyButton: {
-    backgroundColor: "#ff3b30",
+  rideButton: {
+    backgroundColor: "#007AFF",
     paddingVertical: 15,
     width: "100%",
     borderRadius: 10,
