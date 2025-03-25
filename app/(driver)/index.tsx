@@ -16,6 +16,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import mapStyle from "@/assets/mapStyle.json";
 import axios from "axios";
+import { io } from "socket.io-client";
+
+
+
+const SOCKET_URL = "http://192.168.215.61:3000";
+
 
 const Driver = () => {
   const [location, setLocation]: any = useState(null);
@@ -24,6 +30,13 @@ const Driver = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [rideStarted, setRideStarted] = useState(false);
   const router = useRouter();
+
+  const socket = io(SOCKET_URL, {
+    transports: ["websocket"], // Ensures real-time communication
+    forceNew: true,
+    reconnectionAttempts: 10,
+    timeout: 10000,
+  });
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -80,20 +93,26 @@ const Driver = () => {
     const newStatus = !isOnline;
     setIsOnline(newStatus);
     await AsyncStorage.setItem("driverStatus", newStatus ? "online" : "offline");
-
+  
     try {
       const token = await AsyncStorage.getItem("token");
+      console.log("Token:", token); // Debugging token value
+  
+      if (!token) {
+        throw new Error("Token is missing");
+      }
+  
       await axios.post(
         "http://192.168.215.61:3000/update-status",
         { status: newStatus ? "online" : "offline" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     } catch (error) {
-      console.error("Error updating driver status:", error);
+      console.error("Error updating driver status:", error.response?.data || error);
       Alert.alert("Error", "Failed to update status. Please try again.");
     }
   };
-
+  
   // Start/Stop ride function
   const toggleRide = () => {
     setRideStarted(!rideStarted);
