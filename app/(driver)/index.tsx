@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Image,
@@ -16,12 +16,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import mapStyle from "@/assets/mapStyle.json";
 import axios from "axios";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
 
 
-const SOCKET_URL = "http://192.168.215.61:3000";
-
+const SOCKET_URL = "http://192.168.215.61:3000/driver";
+const SERVER_URL = "http://192.168.215.61:3000"
 
 const Driver = () => {
   const [location, setLocation]: any = useState(null);
@@ -31,12 +31,33 @@ const Driver = () => {
   const [rideStarted, setRideStarted] = useState(false);
   const router = useRouter();
 
-  const socket = io(SOCKET_URL, {
-    transports: ["websocket"], // Ensures real-time communication
-    forceNew: true,
-    reconnectionAttempts: 10,
-    timeout: 10000,
-  });
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io(SOCKET_URL, {
+        transports: ["websocket"],
+        forceNew: false, // Prevents duplicate connections
+        reconnectionAttempts: 10,
+        timeout: 10000,
+      });
+
+      socketRef.current.on("connect", () => {
+        console.log("Connected to socket:", socketRef.current?.id);
+      });
+
+      socketRef.current.on("disconnect", () => {
+        console.log("Disconnected from socket");
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -96,18 +117,15 @@ const Driver = () => {
   
     try {
       const token = await AsyncStorage.getItem("token");
-      console.log("Token:", token); // Debugging token value
+      // console.log("Token:", token); // Debugging token value
   
       if (!token) {
         throw new Error("Token is missing");
       }
-  
-      await axios.post(
-        "http://192.168.215.61:3000/update-status",
-        { status: newStatus ? "online" : "offline" },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (error) {
+      console.log("updated status ",newStatus )
+      socketRef.current?.emit("update-status",newStatus)
+     
+    } catch (error:any) {
       console.error("Error updating driver status:", error.response?.data || error);
       Alert.alert("Error", "Failed to update status. Please try again.");
     }
