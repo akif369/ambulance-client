@@ -21,7 +21,7 @@ export default function Login() {
         }
 
         // Verify token with the backend
-        const response = await fetch("http://192.168.215.61:3000/verify-token", { // Replace with your local IP
+        const response = await fetch("http://192.168.52.61:3000/verify-token", { // Replace with your local IP
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -67,8 +67,8 @@ export default function Login() {
   return (
     <View className="flex-1 bg-[#1A4041] justify-evenly items-stretch">
       {/* Help Button */}
-      <TouchableWithoutFeedback onPress={() => console.log("Help box is opened")}>
-        <Text className="absolute top-5 left-5 font-semibold text-white text-lg opacity-90">Help?</Text>
+      <TouchableWithoutFeedback onPress={() => router.push("/(driver)/register")}>
+        <Text  className="absolute top-5 left-5 font-semibold text-white text-lg opacity-90">Help?</Text>
       </TouchableWithoutFeedback>
 
       {/* Close Button */}

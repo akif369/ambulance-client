@@ -35,7 +35,7 @@ const Login = () => {
     setLoading(true);
     console.log(form)
     try {
-      const response = await fetch("http://192.168.215.61:3000/login", {
+      const response = await fetch("http://192.168.52.61:3000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

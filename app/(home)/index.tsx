@@ -32,7 +32,7 @@ const Home = () => {
         }
 
         // Fetch user profile
-        const response = await axios.get("http://192.168.215.61:3000/profile", {
+        const response = await axios.get("http://192.168.52.61:3000/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
