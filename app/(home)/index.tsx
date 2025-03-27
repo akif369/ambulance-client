@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { SERVER_API_URL, SOCKET_API_URL } from "@env";
+
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Image,
@@ -15,12 +17,121 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
 import axios from "axios"; // Import Axios for API calls
+import { io, Socket } from "socket.io-client";
 
 const Home = () => {
   const [location, setLocation]: any = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile]: any = useState(null);
   const router = useRouter();
+  const [ambulanceLocations, setAmbulanceLocations] = useState<
+    { vehicleId: string; latitude: number; longitude: number }[]
+  >([]);
+
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io(SOCKET_API_URL + "/client", {
+        transports: ["websocket"],
+        forceNew: false,
+        reconnectionAttempts: 10,
+        timeout: 10000,
+      });
+
+      socketRef.current.on("connect", () => {
+        console.log("Connected to socket:", socketRef.current?.id);
+      });
+
+      socketRef.current.on("disconnect", () => {
+        console.log("Disconnected from socket");
+      });
+
+      socketRef.current?.emit("setAmbulance");
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (socketRef.current) {
+        socketRef.current.emit("setAmbulance");
+
+        socketRef.current.on("active-ambulances", (ambulances) => {
+            console.log("🚑 Received active ambulances:", ambulances);
+
+            // Transform data before updating state
+            const transformedAmbulances = ambulances.map((ambulance:any) => ({
+                vehicleId: ambulance.vehicleId,
+                latitude: ambulance.currentLocation.latitude,
+                longitude: ambulance.currentLocation.longitude,
+            }));
+
+            setAmbulanceLocations(transformedAmbulances); // Update state
+        });
+
+        return () => {
+            socketRef.current?.off("active-ambulances");
+        };
+    }
+}, []);
+
+
+  
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const handleAmbulanceLocation = (data: {
+      vehicleId: string;
+      latitude: number;
+      longitude: number;
+    }) => {
+      console.log("🚑 Ambulance location updated:", data);
+      
+      setAmbulanceLocations((prevLocations) => {
+        const existingIndex = prevLocations.findIndex(
+          (item) => item.vehicleId === data.vehicleId
+        );
+        if (existingIndex !== -1) {
+          // Update existing ambulance location
+          const updatedLocations = [...prevLocations];
+          updatedLocations[existingIndex] = data;
+          return updatedLocations;
+        } else {
+          // Add new ambulance marker
+          return [...prevLocations, data];
+        }
+      });
+    };
+
+    socketRef.current.on("ambulance-location", handleAmbulanceLocation);
+
+    return () => {
+      socketRef.current?.off("ambulance-location", handleAmbulanceLocation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const handleRemoveAmbulance = ({ vehicleId }:any) => {
+        console.log(`🛑 Removing ambulance ${vehicleId} from map`);
+        setAmbulanceLocations((prevLocations) =>
+            prevLocations.filter(ambulance => ambulance.vehicleId !== vehicleId)
+        );
+    };
+
+    socketRef.current.on("remove-ambulance", handleRemoveAmbulance);
+
+    return () => {
+        socketRef.current?.off("remove-ambulance", handleRemoveAmbulance);
+    };
+}, []);
+
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -32,7 +143,7 @@ const Home = () => {
         }
 
         // Fetch user profile
-        const response = await axios.get("http://192.168.52.61:3000/profile", {
+        const response = await axios.get(SERVER_API_URL + "/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -53,7 +164,10 @@ const Home = () => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Denied", "Allow location access to use this feature.");
+        Alert.alert(
+          "Permission Denied",
+          "Allow location access to use this feature."
+        );
         setIsLoading(false);
         return;
       }
@@ -119,11 +233,17 @@ const Home = () => {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <Image
-            source={userProfile?.profileImage ? { uri: userProfile.profileImage } : require("@/assets/images/profile.png")}
+            source={
+              userProfile?.user.profileImage
+                ? { uri: userProfile.user.profileImage }
+                : require("@/assets/images/profile.png")
+            }
             style={styles.profileImage}
             resizeMode="cover"
           />
-          <Text style={styles.profileName}>{userProfile?.name || "User"}</Text>
+          <Text style={styles.profileName}>
+            {userProfile?.user.name || "User"}
+          </Text>
         </View>
       </View>
 
@@ -141,7 +261,30 @@ const Home = () => {
             initialRegion={location}
             showsUserLocation={true}
           >
-            <Marker coordinate={location} title="You are here" />
+           
+
+          {ambulanceLocations.map((ambulance) => (
+      <Marker
+      key={ambulance.vehicleId}
+      coordinate={{ 
+        latitude: ambulance.latitude, 
+        longitude: ambulance.longitude 
+      }}
+      anchor={{ x: 0.5, y: 0.5 }} // Center the marker on coordinates
+      title={`Ambulance ${ambulance.vehicleId}`}
+    >
+   
+        <Image
+          source={require("@/assets/images/ambulance-marker.png")}
+          style={[
+          
+            { transform: [{ scale: 1 }] } // Add scale animation here if needed
+          ]}
+          resizeMode="contain"
+        />
+   
+    </Marker>
+    ))}
           </MapView>
         ) : (
           <View style={styles.placeholder}>
@@ -154,7 +297,9 @@ const Home = () => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.emergencyButton}
-          onPress={() => Alert.alert("Emergency!", "Calling for an ambulance...")}
+          onPress={() =>
+            Alert.alert("Emergency!", "Calling for an ambulance...")
+          }
         >
           <Text style={styles.buttonText}>EMERGENCY</Text>
         </TouchableOpacity>

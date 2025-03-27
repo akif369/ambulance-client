@@ -1,3 +1,5 @@
+import { SERVER_API_URL,SOCKET_API_URL } from "@env";
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -18,8 +20,6 @@ import mapStyle from "@/assets/mapStyle.json";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.52.61:3000/driver";
-const SERVER_URL = "http://192.168.52.61:3000";
 
 const Driver = () => {
   const [location, setLocation]: any = useState(null);
@@ -33,7 +33,7 @@ const Driver = () => {
 
   useEffect(() => {
     if (!socketRef.current) {
-      socketRef.current = io(SOCKET_URL, {
+      socketRef.current = io(SOCKET_API_URL+"/driver", {
         transports: ["websocket"],
         forceNew: false,
         reconnectionAttempts: 10,
@@ -66,7 +66,7 @@ const Driver = () => {
           return;
         }
 
-        const response = await axios.get(`http://192.168.52.61:3000/profile`, {
+        const response = await axios.get(`${SERVER_API_URL}/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -119,7 +119,7 @@ const Driver = () => {
         return;
       }
 
-      const response = await axios.get("http://192.168.52.61:3000/getAmbulance", {
+      const response = await axios.get(SERVER_API_URL+"/getAmbulance", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -165,7 +165,7 @@ const Driver = () => {
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== "granted") {
               console.log("⚠️ Location permission denied");
-              return;
+              return;  
           }
           const vehicleId = ambulanceDetails?.vehicleId
           console.log("✅ Location tracking started");
@@ -237,7 +237,6 @@ const Driver = () => {
           <ActivityIndicator size="large" color="#ffffff" />
         ) : location ? (
           <MapView style={styles.map} customMapStyle={mapStyle} initialRegion={location} showsUserLocation={true}>
-            <Marker coordinate={location} title="You are here" />
           </MapView>
         ) : (
           <Text style={styles.placeholderText}>Unable to load map.</Text>

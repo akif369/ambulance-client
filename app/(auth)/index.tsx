@@ -1,3 +1,4 @@
+import { SERVER_API_URL } from "@env";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { Text, TouchableWithoutFeedback, View, Image, TouchableHighlight, ActivityIndicator, Alert } from "react-native";
@@ -10,7 +11,7 @@ export default function Login() {
   const [checkingAuth, setCheckingAuth] = useState(true); // To handle initial token check
 
   useEffect(() => {
-
+    
 
     const checkAuth = async () => {
       try {
@@ -21,7 +22,7 @@ export default function Login() {
         }
 
         // Verify token with the backend
-        const response = await fetch("http://192.168.52.61:3000/verify-token", { // Replace with your local IP
+        const response = await fetch(SERVER_API_URL + "/verify-token", { // Replace with your local IP
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -1,3 +1,4 @@
+import { SERVER_API_URL } from "@env";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { 
@@ -35,7 +36,7 @@ const Login = () => {
     setLoading(true);
     console.log(form)
     try {
-      const response = await fetch("http://192.168.52.61:3000/login", {
+      const response = await fetch(SERVER_API_URL + "/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

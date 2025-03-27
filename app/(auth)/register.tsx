@@ -1,3 +1,5 @@
+import { SERVER_API_URL } from "@env";
+
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { 
@@ -35,7 +37,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://192.168.52.61:3000/register", {
+      const response = await fetch(SERVER_API_URL+"/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
