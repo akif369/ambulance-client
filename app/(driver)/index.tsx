@@ -45,7 +45,7 @@ const Driver = () => {
   const [rideStarted, setRideStarted] = useState(false);
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
-
+  const [disableModal,setDisableModal] = useState(false);
 
   const [pendingRequests, setPendingRequests] = useState([]);
   const [selectedRequest, setSelectedRequest]:any = useState(null);
@@ -185,15 +185,29 @@ const Driver = () => {
     }
   };
 
+  useEffect(()=>{
+    socketRef.current?.on("accepted-progress",()=>{
+      setDisableModal(true)
+    })
+  },[])
+
+  useEffect(()=>{
+    socketRef.current?.on("accepted-progress-disable",()=>{
+      console.log("Drop off Successfull")
+      setDisableModal(false)
+      toggleStatus();
+    })
+  },[])
+
 
   useEffect(() => {
     if (isOnline) {
-      const handlePendingRequests = (requests) => {
+      const handlePendingRequests = (requests:any) => {
         console.log("Received pending requests:", requests);
         setPendingRequests(requests);
       };
   
-      const handleNewRequest = (newRequest) => {
+      const handleNewRequest = (newRequest:any) => {
         console.log("New emergency request received:", newRequest);
         setPendingRequests(prev => [...prev, newRequest]);
       };
@@ -215,7 +229,30 @@ const Driver = () => {
       setPendingRequests([]);
     }
   }, [isOnline]);
+
+  const handleRequestAction = async (action) => {
+    try {
+      if (!selectedRequest) return;
+  
+      // Update request status via socket
+      socketRef.current?.emit('update-request-status', {
+        requestId: selectedRequest._id,
+        status: action
+      });
+  
+      // Close modal if action is completed/cancelled
+      if (['completed', 'cancelled'].includes(action)) {
+        setSelectedRequest(null);
+      }
+
+  
+    } catch (error:any) {
+      Alert.alert('Error', `Failed to ${action} request: ${error.message}`);
+    }
+  };
+
 const handleAcceptRequest = (requestId:string) => {
+  
   socketRef.current?.emit('accept-request', {
     requestId,
     vehicleId:ambulanceDetails?.vehicleId 
@@ -385,7 +422,7 @@ const handleAcceptRequest = (requestId:string) => {
         )}
       </View>
 
-      <Modal
+     {disableModal || <Modal
         visible={!!selectedRequest}
         transparent
         animationType="slide"
@@ -453,7 +490,95 @@ const handleAcceptRequest = (requestId:string) => {
             )}
           </View>
         </View>
-      </Modal>
+      </Modal>}
+
+
+      {disableModal && (
+  <Modal
+    visible={!!selectedRequest}
+    transparent
+    animationType="slide"
+    onRequestClose={() => setSelectedRequest(null)}
+  >
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        {selectedRequest && (
+          <>
+            <Text style={styles.modalTitle}>Emergency Details</Text>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Type:</Text>
+              <Text style={styles.detailValue}>
+                {selectedRequest.emergencyDetails}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Patients:</Text>
+              <Text style={styles.detailValue}>
+                {selectedRequest.patientCount}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Status:</Text>
+              <Text
+                style={[
+                  styles.detailValue,
+                  styles[selectedRequest.status] // Add status-based styling
+                ]}
+              >
+                {selectedRequest.status?.replace('_', ' ').toUpperCase()}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Distance:</Text>
+              <Text style={styles.detailValue}>
+                {calculateDistance(location, selectedRequest.location)} km
+              </Text>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              {selectedRequest.status === 'pending' ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setSelectedRequest(null)}
+                  >
+                    <Text style={styles.buttonText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={() =>handleAcceptRequest(selectedRequest._id)}
+                  >
+                    <Text style={styles.buttonText}>Accept Request</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => handleRequestAction('cancelled')}
+                  >
+                    <Text style={styles.buttonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={() => handleRequestAction('completed')}
+                  >
+                    <Text style={styles.buttonText}>Complete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  </Modal>
+)}
+
     </View>
   );
 };
@@ -597,6 +722,39 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#ff3b30',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 5,
+  },
+  completeButton: {
+    backgroundColor: '#34c759',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginLeft: 5,
+  },
+  statusIndicator: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  pending: {
+    color: '#ff9500',
+  },
+  accepted: {
+    color: '#007AFF',
+  },
+  in_progress: {
+    color: '#5856d6',
+  },
+  completed: {
+    color: '#34c759',
+  },
+  cancelled: {
+    color: '#ff3b30',
   },
   ambulanceText: { color: "white", fontSize: 16, fontWeight: "bold" },
 });

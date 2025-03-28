@@ -64,8 +64,8 @@ const Register = () => {
   return (
     <View className="flex-1 bg-[#1A4041] justify-evenly p-6">
       {/* Help Button */}
-      <TouchableWithoutFeedback onPress={() => console.log("Help box is opened")}>
-        <Text className="absolute top-5 left-5 font-semibold text-white text-lg opacity-90">Help?</Text>
+      <TouchableWithoutFeedback onPress={() => router.push("/(driver)/register")}>
+        <Text  className="absolute top-5 left-5 font-semibold text-white text-md opacity-90">Register Driver?</Text>
       </TouchableWithoutFeedback>
 
       {/* Close Button */}

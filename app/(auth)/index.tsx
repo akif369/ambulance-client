@@ -8,7 +8,7 @@ const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
 const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
 
 export default function Login() {
-
+  console.log(SERVER_API)
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
