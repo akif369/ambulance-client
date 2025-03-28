@@ -1,4 +1,3 @@
-import { SERVER_API_URL } from "@env";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { 
@@ -13,6 +12,9 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
+
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
 
 const Login = () => {
   const router = useRouter();
@@ -36,7 +38,7 @@ const Login = () => {
     setLoading(true);
     console.log(form)
     try {
-      const response = await fetch(SERVER_API_URL + "/login", {
+      const response = await fetch(SERVER_API + "/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,6 +58,7 @@ const Login = () => {
       // Redirect to home
       router.replace("/(home)");
     } catch (error:any) {
+      console.log(error)
       Alert.alert("Login Failed", error.message);
     } finally {
       setLoading(false);

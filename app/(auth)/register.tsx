@@ -1,5 +1,3 @@
-import { SERVER_API_URL } from "@env";
-
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { 
@@ -13,6 +11,9 @@ import {
   Alert 
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
 
 const Register = () => {
   const router = useRouter();
@@ -37,7 +38,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(SERVER_API_URL+"/register", {
+      const response = await fetch(SERVER_API+"/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

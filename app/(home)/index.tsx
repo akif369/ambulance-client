@@ -1,5 +1,3 @@
-import { SERVER_API_URL, SOCKET_API_URL } from "@env";
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -18,6 +16,10 @@ import { useRouter } from "expo-router";
 import mapStyle from "@/assets/mapStyle.json"; // Dark mode map style
 import axios from "axios"; // Import Axios for API calls
 import { io, Socket } from "socket.io-client";
+import Modal from "@/components/EmergencyModal";
+
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
 
 const Home = () => {
   const [location, setLocation]: any = useState(null);
@@ -30,6 +32,18 @@ const Home = () => {
 
   const socketRef = useRef<Socket | null>(null);
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleEmergencyPress = () => {
+    if (!location) {
+      Alert.alert("Error", "Location not available. Please wait...");
+      return;
+    }
+    setModalVisible(true);
+  };
+
+  
   useEffect(() => {
     if (!socketRef.current) {
       socketRef.current = io(SOCKET_API_URL + "/client", {
@@ -58,31 +72,64 @@ const Home = () => {
     };
   }, []);
 
+  const handleSubmitEmergency = async (formData:any) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("Not authenticated");
+  
+      // Get user ID from profile
+      if (!userProfile?.user?.id) throw new Error("User not found");
+      
+      // Emit emergency request via socket
+      socketRef.current?.emit("emergency-request", {
+        userId: userProfile.user.id,
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: "Current Location" // Add geocoding if available
+        },
+        emergencyDetails: formData.emergencyDetails,
+        patientCount: formData.patientCount,
+        criticalLevel: formData.criticalLevel
+      });
+ 
+      setModalVisible(false);
+      // Listen for acceptance
+      socketRef.current?.on("request-accepted", (data) => {
+        Alert.alert("Ambulance Arriving!", `Ambulance ID: ${data.ambulanceId}\nETA: ${data.estimatedTime}`);
+      });
+  
+      socketRef.current?.on("request-error", (error) => {
+        Alert.alert("Error", error);
+      });
+  
+    } catch (error:any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   useEffect(() => {
     if (socketRef.current) {
-        socketRef.current.emit("setAmbulance");
+      socketRef.current.emit("setAmbulance");
 
-        socketRef.current.on("active-ambulances", (ambulances) => {
-            console.log("🚑 Received active ambulances:", ambulances);
+      socketRef.current.on("active-ambulances", (ambulances) => {
+        console.log("🚑 Received active ambulances:", ambulances);
 
-            // Transform data before updating state
-            const transformedAmbulances = ambulances.map((ambulance:any) => ({
-                vehicleId: ambulance.vehicleId,
-                latitude: ambulance.currentLocation.latitude,
-                longitude: ambulance.currentLocation.longitude,
-            }));
+        // Transform data before updating state
+        const transformedAmbulances = ambulances.map((ambulance: any) => ({
+          vehicleId: ambulance.vehicleId,
+          latitude: ambulance.currentLocation.latitude,
+          longitude: ambulance.currentLocation.longitude,
+        }));
 
-            setAmbulanceLocations(transformedAmbulances); // Update state
-        });
+        setAmbulanceLocations(transformedAmbulances); // Update state
+      });
 
-        return () => {
-            socketRef.current?.off("active-ambulances");
-        };
+      return () => {
+        socketRef.current?.off("active-ambulances");
+      };
     }
-}, []);
-
-
-  
+  }, []);
 
   useEffect(() => {
     if (!socketRef.current) return;
@@ -92,7 +139,7 @@ const Home = () => {
       longitude: number;
     }) => {
       console.log("🚑 Ambulance location updated:", data);
-      
+
       setAmbulanceLocations((prevLocations) => {
         const existingIndex = prevLocations.findIndex(
           (item) => item.vehicleId === data.vehicleId
@@ -118,20 +165,19 @@ const Home = () => {
 
   useEffect(() => {
     if (!socketRef.current) return;
-    const handleRemoveAmbulance = ({ vehicleId }:any) => {
-        console.log(`🛑 Removing ambulance ${vehicleId} from map`);
-        setAmbulanceLocations((prevLocations) =>
-            prevLocations.filter(ambulance => ambulance.vehicleId !== vehicleId)
-        );
+    const handleRemoveAmbulance = ({ vehicleId }: any) => {
+      console.log(`🛑 Removing ambulance ${vehicleId} from map`);
+      setAmbulanceLocations((prevLocations) =>
+        prevLocations.filter((ambulance) => ambulance.vehicleId !== vehicleId)
+      );
     };
 
     socketRef.current.on("remove-ambulance", handleRemoveAmbulance);
 
     return () => {
-        socketRef.current?.off("remove-ambulance", handleRemoveAmbulance);
+      socketRef.current?.off("remove-ambulance", handleRemoveAmbulance);
     };
-}, []);
-
+  }, []);
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -143,7 +189,7 @@ const Home = () => {
         }
 
         // Fetch user profile
-        const response = await axios.get(SERVER_API_URL + "/profile", {
+        const response = await axios.get(SERVER_API + "/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -261,30 +307,25 @@ const Home = () => {
             initialRegion={location}
             showsUserLocation={true}
           >
-           
-
-          {ambulanceLocations.map((ambulance) => (
-      <Marker
-      key={ambulance.vehicleId}
-      coordinate={{ 
-        latitude: ambulance.latitude, 
-        longitude: ambulance.longitude 
-      }}
-      anchor={{ x: 0.5, y: 0.5 }} // Center the marker on coordinates
-      title={`Ambulance ${ambulance.vehicleId}`}
-    >
-   
-        <Image
-          source={require("@/assets/images/ambulance-marker.png")}
-          style={[
-          
-            { transform: [{ scale: 1 }] } // Add scale animation here if needed
-          ]}
-          resizeMode="contain"
-        />
-   
-    </Marker>
-    ))}
+            {ambulanceLocations.map((ambulance) => (
+              <Marker
+                key={ambulance.vehicleId}
+                coordinate={{
+                  latitude: ambulance.latitude,
+                  longitude: ambulance.longitude,
+                }}
+                anchor={{ x: 0.5, y: 0.5 }} // Center the marker on coordinates
+                title={`Ambulance ${ambulance.vehicleId}`}
+              >
+                <Image
+                  source={require("@/assets/images/ambulance-marker.png")}
+                  style={[
+                    { transform: [{ scale: 1 }] }, // Add scale animation here if needed
+                  ]}
+                  resizeMode="contain"
+                />
+              </Marker>
+            ))}
           </MapView>
         ) : (
           <View style={styles.placeholder}>
@@ -297,13 +338,18 @@ const Home = () => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.emergencyButton}
-          onPress={() =>
-            Alert.alert("Emergency!", "Calling for an ambulance...")
-          }
+          onPress={handleEmergencyPress}
         >
           <Text style={styles.buttonText}>EMERGENCY</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleSubmitEmergency}
+        isSubmitting={isSubmitting}
+      />
     </View>
   );
 };

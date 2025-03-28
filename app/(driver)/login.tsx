@@ -1,4 +1,3 @@
-import { SERVER_API_URL,SOCKET_API_URL } from "@env";
 
 
 import { useState } from "react";
@@ -16,6 +15,9 @@ import {
 import Svg, { Path } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
+
 const DriverLogin = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ const DriverLogin = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(SERVER_API_URL+"/login", {
+      const response = await fetch(SERVER_API+"/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

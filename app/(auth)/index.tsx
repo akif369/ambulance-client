@@ -1,18 +1,20 @@
-import { SERVER_API_URL } from "@env";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { Text, TouchableWithoutFeedback, View, Image, TouchableHighlight, ActivityIndicator, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
 
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
+
 export default function Login() {
+
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true); // To handle initial token check
 
   useEffect(() => {
-    
-
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
@@ -22,7 +24,7 @@ export default function Login() {
         }
 
         // Verify token with the backend
-        const response = await fetch(SERVER_API_URL + "/verify-token", { // Replace with your local IP
+        const response = await fetch(SERVER_API + "/verify-token", { // Replace with your local IP
           method: "POST",
           headers: {
             "Content-Type": "application/json",

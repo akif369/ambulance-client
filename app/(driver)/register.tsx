@@ -1,4 +1,3 @@
-import { SERVER_API_URL,SOCKET_API_URL } from "@env";
 
 import { useState } from "react";
 import { useRouter } from "expo-router";
@@ -14,6 +13,9 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Picker } from "@react-native-picker/picker"; // Install via: npm install @react-native-picker/picker
+
+const SERVER_API =  process.env.EXPO_PUBLIC_API_URL
+const SOCKET_API_URL =  process.env.EXPO_PUBLIC_SOCKET_URL
 
 const DriverRegister = () => {
   const router = useRouter();
@@ -41,7 +43,7 @@ const DriverRegister = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(SERVER_API_URL+"/register", {
+      const response = await fetch(SERVER_API+"/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
